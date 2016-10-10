@@ -1,0 +1,274 @@
+---
+title: "DAM Final"
+author: "Debasmita Basak, Bernice Somnath, Dibyashree Dikshit"
+date: "April 22, 2016"
+output: html_document
+---
+#ANALYSIS OF COMPRESSIVE STRENGTH OF CONCRETE#
+###Data selection and background###
+
+The data set we have selected for the final project is Concrete Compressive Strength.
+
+Concrete is the most commonly used structural material and is composed of individual base materials. Prediction of compressive strength of concrete is an important activity in construction technology. Timely knowledge of concrete strength helps to schedule operations such as prestressing and removal of formwork. The speed of construction can be increased using maturity methods for determining concrete compressive strength. Understanding compressive strength of concrete also helps in achieving construction quality control parameters like durability of structures and avoiding excessive loading, and so forth. Regression techniques are the simplest and most efficient techniques for predicting related tasks.
+
+The data set comprises of one response variable -- Compressive Strength and eight other covariates -- Cement, Furnage Stag, Fly Ash, Water, Superplasticizers, Coarse Aggregate, Fine Aggregate and Age.
+
+The analysis that we are trying to perform here is to find a correlation between compressive strength of cement and other related variables. The aim of this analysis is to generate a model that can determine the relationship of compressive strength of cement with other covariates.
+
+The basic steps followed in the analyis process was:
+1.Data exploration and cleaning
+2.Identification of correlation
+3.Model generation
+4.Model checking
+5.Remodelling
+6.Finalizing the model
+
+
+
+###Reading and cleaning data###
+```{r}
+
+rm(list = ls())
+concrete_data <- read.csv("C:\\Users\\debas\\Documents\\UC Sem II\\DAM\\Final\\Concrete_Data.csv", sep = ",", quote = "\"", dec = ".", fill = TRUE)
+attach(concrete_data)
+
+dim(concrete_data)
+names(concrete_data)
+head(concrete_data)
+length(concrete_data)
+nrow(concrete_data)
+any(is.na(concrete_data))
+
+```
+The data set "Concrete data" has 9 variables and 1030 rows. The data set contains headers for these 9 columns. There is no missing values in the dataset.
+
+###Exploring and plotting data###
+Before we start our analysis, we can visualize the variables to get a better understanding of each of them. A histogram can be used for this.
+```{r}
+par(mfrow=c(3,4))
+
+hist(concrete_data$Cement)
+hist(concrete_data$Furnace.Slag)
+
+hist(concrete_data$Fly.Ash)
+hist(concrete_data$Water)
+
+hist(concrete_data$Superplasticizer)
+hist(concrete_data$Coarse.Agg)
+
+hist(concrete_data$Fine.Agg)
+hist(concrete_data$Age)
+
+hist(concrete_data$comp.strength)
+
+
+
+```
+
+###Correlating data###
+To find any correlation between vairables in the dataset, we use correlation function to see each variable's effect on another.
+```{r}
+cor(concrete_data[sapply(concrete_data ,is.numeric)])
+
+par(mfrow = c(2,2))
+pairs(concrete_data[sapply(concrete_data, is.numeric)], pch=20)
+
+```
+Here we can observe that a few variables have an effect on compressive strength of cement. The effect on quantity of cement is the strongest.
+
+###Modelling data###
+Here, we are modelling data using all covariates
+```{r}
+model_all <- lm(comp.strength ~ Cement + Furnace.Slag + Fly.Ash + Water + Superplasticizer + Coarse.Agg + Fine.Agg + Age, data = concrete_data)
+summary(model_all)
+
+```
+
+Next, we are trying to model the relationship between the compressive strength and all the variables in the data set.The Adj.R-square value is observed as 0.6125.
+
+####Using package "leaps" to find the top 3 best models with varying number of variables####
+
+The R Leaps package provides the n BEST models for each subset size of variable set with the nbest parameter in the regsubset() fucnction. We have the priviledge to avoid re-modelling since the very first time we have a good model.
+```{r}
+install.packages("leaps")
+library(leaps)
+attach(concrete_data)
+
+leaps<-regsubsets(comp.strength ~ Cement + Furnace.Slag + Fly.Ash + Water + Superplasticizer + Coarse.Agg + Fine.Agg + Age, data = concrete_data, nbest=3)
+summary(leaps)
+
+```
+
+
+Now we will study the best models for each predictor size. Then we will evaluate the best model among the 8 best.
+
+```{r}
+model1 <-lm(comp.strength ~ Cement, data=concrete_data)
+summary(model1)
+model2 <-lm(comp.strength ~ Cement + Superplasticizer, data=concrete_data)
+summary(model2)
+model3 <-lm(comp.strength ~ Cement + Superplasticizer + Age, data=concrete_data)
+summary(model3)
+model4 <-lm(comp.strength ~ Cement + Furnace.Slag + Age + Water, data=concrete_data)
+summary(model4) #0.5
+model5 <-lm(comp.strength ~ Cement + Furnace.Slag + Fly.Ash + Age + Water, data=concrete_data)
+summary(model5) #0.6
+model6 <-lm(comp.strength ~ Cement + Furnace.Slag + Fly.Ash + Age + Water + Superplasticizer, data=concrete_data)
+summary(model6)#0.6
+model7 <-lm(comp.strength ~ Cement + Furnace.Slag + Fly.Ash + Age + Water + Superplasticizer + Coarse.Agg, data=concrete_data)
+summary(model7)#0.6
+model8 <-lm(comp.strength ~ Cement + Furnace.Slag + Fly.Ash + Age + Water + Superplasticizer + Coarse.Agg + Fine.Agg, data=concrete_data)#.6
+summary(model8)
+```
+The adjusted R-square value shows the best model. The higher the value, the better the model. Here we chose model6 as the best model to proceed with.
+
+
+```{r}
+summary(model6)
+summary(model6)$coef
+summary(model6)$adj.r.squared
+```
+
+
+### Analysis of the Residue ###
+Here we calculate 4 different types of residuals and plot them against the fitted values and then try to find if there is any pattern in them. 
+```{r}
+#Calculating Sum of squares of residuals 
+n <- dim(concrete_data)[1]
+SSRes <- sum((model6$residuals - mean(model6$residuals))^2)
+MSRes <- SSRes/(n-3)
+#Calculating standardized residuals
+standard_res <- model6$residuals/sqrt(MSRes)
+#Calculating studentized residuals
+student_res <- model6$residuals/sqrt(MSRes)/sqrt(1 - lm.influence(model6)$hat)
+#Calculating press residual
+press_res <- model6$residuals/(1 - lm.influence(model6)$hat)
+#Calculating R student
+r_stud <- rstudent(model6)
+
+#Residual plots
+plot(model6$fitted.values, model6$residuals, pch = 20)
+abline(h=0, col = "red")
+plot(model6$fitted.values, standard_res, pch = 20, xlab = "Fitted Values", ylab = "Standardized Residuals")
+abline(h=0, col="red")
+plot(model6$fitted.values, student_res, pch = 20, xlab = "Fitted Values", ylab = "Studentized Residuals")
+abline(h=0, col="red")
+plot(model6$fitted.values, press_res, pch = 20, xlab = "Fitted Values", ylab = "PRESS Residuals")
+abline(h=0, col="red")
+plot(model6$fitted.values, r_stud, pch = 20, xlab = "Fitted Values", ylab = "R Student Residuals")
+abline(h=0, col="red")
+```
+
+Creating Q-Q plots
+```{r}
+qqnorm(model6$residuals)
+qqline(model6$residuals)
+qqnorm(student_res)
+qqline(student_res)
+
+```
+In case of QQ plot, the basic idea is to compute the theoretically expected value for each data point based on the distribution in question. If the data indeed follow the assumed distribution, then the points on the q-q plot will fall approximately on a straight line If we look at the above plotted q-q plots,it adheres to the above mentioned purpose.
+
+
+###Muticollinearity Check###
+Next we compare the multicolinearity between model3
+```{r}
+install.packages("car")
+library(car)
+vif(model6)
+```
+The VIF value is close to 1 which indicates the absence of any multicollinearity.
+
+### Performing ANOVA Test ###
+```{r}
+anova(model6)
+```
+We can observe that all variables have low enough p values to be considered significant.
+
+### Model Plotting ###
+```{r}
+plot(model6$fitted.values, concrete_data$Cement)
+plot(model6$fitted.values, concrete_data$Furnace.Slag)
+plot(model6$fitted.values, concrete_data$Fly.Ash)
+plot(model6$fitted.values, concrete_data$Water)
+plot(model6$fitted.values, concrete_data$Superplasticizer)
+plot(model6$fitted.values, concrete_data$Coarse.Agg)
+plot(model6$fitted.values, concrete_data$Fine.Agg)
+plot(model6$fitted.values, concrete_data$Age)
+plot(model6$fitted.values, concrete_data$comp.strength)
+par(mfrow=c(3,3))
+```
+
+### Applying Transformations to improve model6
+
+### Applying Box-cox
+
+```{r}
+require(MASS)
+boxcox(model6, seq(-2,0, 0.1))
+lambda <- 1.1
+concrete_data$comp.strength.transformed <- (concrete_data$comp.strength)^lambda
+model6.1 <- lm(comp.strength.transformed ~ Cement + Furnace.Slag + Fly.Ash + Age + Water + Superplasticizer, data=concrete_data)
+
+#Adjusted R-Square value
+summary(model6.1)$adj.r.squared
+
+#How effective is the transformation? Studying residuals for the new model.
+plot(model6.1$fitted.values, model6.1$residuals, pch = 20)
+abline(h=0, col = "red")
+plot(concrete_data$comp.strength.transformed, model6.1$residuals)
+qqnorm(model6.1$residuals)
+qqline(model6.1$residuals)
+
+```
+Observation: As we can see, this transformation did not improve the Adjusted R square value or the distribution of Residuals. Hence, we will procced to apply transformations on the covariates.
+
+We have seen earlier that among the covariates of model6, Age is not normally distributed. So, we will try to normalize it and check its effect on our model. We will also study the residuals distribution after re-generating the model.
+
+```{r}
+concrete_data$log_Age <-log(Age)
+hist(concrete_data$log_Age)
+
+model6.2 <- lm(comp.strength ~ Cement + Furnace.Slag + Fly.Ash + concrete_data$log_Age + Water + Superplasticizer, data=concrete_data)
+summary(model6.2)$coef
+summary(model6.2)$adj.r.squared
+
+##Analysing Residuals
+
+SSRes <- sum((model6.2$residuals - mean(model6.2$residuals))^2)
+MSRes <- SSRes/(n-3)
+#Calculating standardized residuals
+standard_res <- model6.2$residuals/sqrt(MSRes)
+#Calculating studentized residuals
+student_res <- model6.2$residuals/sqrt(MSRes)/sqrt(1 - lm.influence(model6.2)$hat)
+#Calculating press residual
+press_res <- model6.2$residuals/(1 - lm.influence(model6.2)$hat)
+#Calculating R student
+r_stud <- rstudent(model6.2)
+
+#Residual plots
+mfrow(c(2,3))
+plot(comp.strength,model6.2$residuals, pch = 20)
+abline(h=0, col = "red")
+plot(model6.2$fitted.values, model6.1$residuals, pch = 20)
+abline(h=0, col = "red")
+plot(model6.2$fitted.values, standard_res, pch = 20, xlab = "Fitted Values", ylab = "Standardized Residuals")
+abline(h=0, col="red")
+plot(model6.2$fitted.values, student_res, pch = 20, xlab = "Fitted Values", ylab = "Studentized Residuals")
+abline(h=0, col="red")
+plot(model6.2$fitted.values, press_res, pch = 20, xlab = "Fitted Values", ylab = "PRESS Residuals")
+abline(h=0, col="red")
+plot(model6.2$fitted.values, r_stud, pch = 20, xlab = "Fitted Values", ylab = "R Student Residuals")
+abline(h=0, col="red")
+
+```
+As we can see, the Adjusted R square value spiked to 0.81 from 0.61 which shows that model6.1 is better at predicting the comprehensive strength of cement. We can also see that the residuals are more evenly distributed now and do not show any kind of correlation with the response variable or the fitted values.
+
+###Final Model
+```{r}
+Model6.2$coef
+```
+
+
+
+
