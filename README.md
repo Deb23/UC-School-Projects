@@ -1,2 +1,2 @@
 # UC-School-Projects
-Class Projects done utilizing variuos statistical methods learnt.
+Projects done utilizing various statistical methods learnt in class.
